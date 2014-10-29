@@ -13,8 +13,8 @@ class DbpediaLoader extends DataLoader with NeoService {
   implicit def neo4jserver = new Neo4JServer("127.0.0.1", 7474, "/db/data/")
   // make sure we have setup the unique constraints
   println("contraints")
-  Q("CREATE CONSTRAINT ON (t:Type) ASSERT t.typeUri IS UNIQUE;").getOneJs
-  Q("CREATE CONSTRAINT ON (e:Entity) ASSERT e.entityUri IS UNIQUE;").getOneJs
+  Q("CREATE CONSTRAINT ON (t:Type) ASSERT t.uri IS UNIQUE;").getOneJs
+  Q("CREATE CONSTRAINT ON (e:Entity) ASSERT e.uri IS UNIQUE;").getOneJs
 
 
   private def convertToPropsList(js:JsValue, s: SchemaProperty):(String, Option[JsValue]) = {
@@ -28,39 +28,53 @@ class DbpediaLoader extends DataLoader with NeoService {
     }
   }
 
-  private def mergeTypeHeirarchy(types:List[String]) = {
+  private def mergeTypeHierarchy(types:List[String], entity: DbPediaThing):List[String] = {
     types.map{ t =>
-    s"""
-      |MERGE (t:Type {typeUri:'$t'});
-    """.stripMargin
+      (s"""
+      |MERGE (t:Type {uri:'$t'});
+      """.stripMargin,
+      s"""
+      |MATCH (t:Type {uri:'$t'}), (e:Entity {uri:'${entity.entityUri}'}) CREATE UNIQUE (e)-[:INSTANCE_OF]->(t);
+      """.stripMargin
+      )
+    }.unzip match{
+      case (as, bs) =>
+        as ::: bs
+    }
+  }
+
+  private def relator(thing:DbPediaThing, ontologies:List[SchemaProperty]) = {
+    ontologies.map{
+      case s:SchemaProperty =>
+        println(thing.properties.getOrElse(s.propertyLabel,""))
     }
   }
 
   def load(json:JsValue) = {
 
     val props = (json \ "properties").as[List[SchemaProperty]]
+    val ontologies = props.filter( _.propertyType.startsWith("http://dbpedia.org/ontology") )
     val instances = (json \ "instances").as[List[JsValue]]
     val entities = instances.map{
       case js:JsValue =>
+        //println(Json.prettyPrint(js))
+        //throw new Exception("")
         // rdf-schema#label
         // 22-rdf-syntax-ns#type
         val map = props.map{
           case s:SchemaProperty =>
             convertToPropsList(js,s)
         }.filter( _ != None ).toMap
-
-        val label = (js \\ "http://www.w3.org/2000/01/rdf-schema#label").head.toString
-
+        val label = (js \\ "http://www.w3.org/2000/01/rdf-schema#label").head.as[String]
         if( label.contains("NULL") ){
           (js \\ "http://dbpedia.org/ontology/variantOf_label") match{
             case x :: xs  =>
-              new DbPediaVariant( js.asInstanceOf[JsObject].keys.head, (js \\ "http://dbpedia.org/ontology/variantOf_label").head.toString, map  )
+              new DbPediaVariant( js.asInstanceOf[JsObject].keys.head, (js \\ "http://dbpedia.org/ontology/variantOf_label").head.as[String], map  )
             case _ =>
               new DbPediaThing( js.asInstanceOf[JsObject].keys.head, null, map  )
           }
         }else{
-          println(s" .. '$label'")
-          new DbPediaThing( js.asInstanceOf[JsObject].keys.head, (js \\ "http://www.w3.org/2000/01/rdf-schema#label").head.toString, map  )
+          new DbPediaThing( js.asInstanceOf[JsObject].keys.head, (js \\ "http://www.w3.org/2000/01/rdf-schema#label").head.as[String], map  )
         }
     }
     // break into groups of 100 items per group...
@@ -68,21 +82,26 @@ class DbpediaLoader extends DataLoader with NeoService {
     println(s"BATCHING into ${groups.length}")
     groups.foreach {
       list =>
-        list.map {
+        val statments = list.map {
           case v: DbPediaVariant =>
             println("variant")
+              s"""
+                 |MERGE (e:Entity {uri:'${v.entityUri}',label:'${v.label}'});
+              """.stripMargin :: mergeTypeHierarchy(v.properties.getOrElse("22-rdf-syntax-ns#type_label", Some(Json.arr(""))).get.as[List[String]], v)
           case t: DbPediaThing =>
-            val types = mergeTypeHeirarchy(t.properties.getOrElse("22-rdf-syntax-ns#type_label", Some(Json.arr(""))).get.as[List[String]])
-            batchCypher(types).map{
-              case js =>
-                println(js)
-            }
+            relator(t,ontologies)
+              s"""
+                |MERGE (e:Entity {uri:'${t.entityUri}',label:'${t.label}'});
+              """.stripMargin :: mergeTypeHierarchy(t.properties.getOrElse("22-rdf-syntax-ns#type_label", Some(Json.arr(""))).get.as[List[String]], t)
           case _ =>
             println("Unknown Entity type")
+            List("")
         }
-
-
-
+        println(statments.flatten.toList)
+        batchCypher(statments.flatten.toList).map{
+          case js =>
+            println(js)
+        }
     }
 
   }
