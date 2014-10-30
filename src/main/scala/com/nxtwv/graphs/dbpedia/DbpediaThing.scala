@@ -1,5 +1,7 @@
 package com.nxtwv.graphs.dbpedia
 
+import java.net.URLEncoder
+
 import com.nxtwv.graphs.common.Thing
 import play.api.libs.json.{JsArray, JsValue, Json}
 
@@ -15,12 +17,22 @@ object DbPediaThing{
 }
 
 
-class DbPediaThing(val entityUri: String, label:String, properties: Map[String, Option[JsValue]]) extends Thing(label:String, properties: Map[String, Option[JsValue]]){
+class DbPediaThing(private val uri: String, label:String, properties: Map[String, Option[JsValue]]) extends Thing(label:String, properties: Map[String, Option[JsValue]]){
+
+  override def toString = {
+    val str = (s"UIR :: $entityUri\n") + super.toString
+    str.mkString
+  }
+
+  def entityUri = {
+    URLEncoder.encode(uri,"UTF-8")
+  }
+
   // TODO: which items do we want to make sure are indexed?
   def toJson ={
     val map = Map(
       "uri" -> entityUri,
-      "label" -> label
+      "label" -> label.replace("'","\\'")
     )
     /*
     ++ properties.filter{ case (k,v) => v != None }.map{

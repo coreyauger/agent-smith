@@ -46,7 +46,23 @@ class DbpediaLoader extends DataLoader with NeoService {
   private def relator(thing:DbPediaThing, ontologies:List[SchemaProperty]) = {
     ontologies.map{
       case s:SchemaProperty =>
-        println(thing.properties.getOrElse(s.propertyLabel,""))
+        val theType = List(s.propertyType)  // Type of what we are pointing to
+        // s.propertyLabel   // the label for the edge .. eg: [CREATOR]
+
+        // Need to make sure that the type exists..
+        // Create the entity and map it to it's type
+        // Relate this entity to the new entity with the above property label..
+
+        //thing.properties.getOrElse(s.propertyLabel,"").get.as[List[String]].map{
+        //  prop =>
+        //    println(prop)
+        //}
+
+        //val thing = new DbPediaThing(s.propertyURI)
+        println(thing)
+        println(s)
+        println()
+        throw new Exception("")
     }
   }
 
@@ -86,18 +102,18 @@ class DbpediaLoader extends DataLoader with NeoService {
           case v: DbPediaVariant =>
             println("variant")
               s"""
-                 |MERGE (e:Entity {uri:'${v.entityUri}',label:'${v.label}'});
+                 |MERGE (e:Entity {uri:'${v.entityUri}',label:'${v.label.replace("'","\\'")}'});
               """.stripMargin :: mergeTypeHierarchy(v.properties.getOrElse("22-rdf-syntax-ns#type_label", Some(Json.arr(""))).get.as[List[String]], v)
           case t: DbPediaThing =>
             relator(t,ontologies)
               s"""
-                |MERGE (e:Entity {uri:'${t.entityUri}',label:'${t.label}'});
+                |MERGE (e:Entity {uri:'${t.entityUri}',label:'${t.label.replace("'","\\'")}'});
               """.stripMargin :: mergeTypeHierarchy(t.properties.getOrElse("22-rdf-syntax-ns#type_label", Some(Json.arr(""))).get.as[List[String]], t)
           case _ =>
             println("Unknown Entity type")
             List("")
         }
-        println(statments.flatten.toList)
+        //println(statments.flatten.toList)
         batchCypher(statments.flatten.toList).map{
           case js =>
             println(js)

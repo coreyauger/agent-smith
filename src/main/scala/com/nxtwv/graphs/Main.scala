@@ -53,10 +53,12 @@ object Main extends App{
     //scan("https://schema.org/docs/full.html")
     //scan("http://www.raleigh-sound.com/shows.php")
 
-    val jsonStr = GZipFileContents(new java.io.File("data/Colour.json.gz"), "UTF-8")
+    //val jsonStr = GZipFileContents(new java.io.File("data/Colour.json.gz"), "UTF-8")
     //val jsonStr = GZipFileContents(new java.io.File("/home/suroot/projects/data/dbpedia/json/Magazine.json.gz"), "UTF-8")
+    val jsonStr = GZipFileContents(new java.io.File("/home/suroot/projects/data/dbpedia/json/ComicsCharacter.json.gz"), "UTF-8")
     val json = Json.parse(jsonStr)
     val readableString: String = Json.prettyPrint(json)
+    //print(readableString)
    // val writer = new PrintWriter(new File("data/Colour.json" ))
    // writer.write(readableString)
    // writer.close()
