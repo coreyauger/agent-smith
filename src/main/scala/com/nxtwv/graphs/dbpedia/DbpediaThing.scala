@@ -3,6 +3,7 @@ package com.nxtwv.graphs.dbpedia
 import java.net.URLEncoder
 
 import com.nxtwv.graphs.common.Thing
+import com.nxtwv.graphs.dbpedia.DbPediaThing.SchemaProperty
 import play.api.libs.json.{JsArray, JsValue, Json}
 
 
@@ -10,46 +11,47 @@ import play.api.libs.json.{JsArray, JsValue, Json}
 
 object DbPediaThing{
 
-  case class SchemaProperty(propertyType: String, propertyTypeLabel: String, propertyLabel: String, propertyURI: String) extends com.nxtwv.graphs.common.Thing.Property
-  implicit val sf = Json.format[SchemaProperty]
-  implicit val sr  = Json.reads[SchemaProperty]
+  trait PropertyValue
+  object PropertyValue{
+    def apply(str:String):PropertyValue = {
+      if(str.startsWith("{"))
+        PropertyValueArray(str.substring(1, str.length - 1).split('|'))
+      else if(str == "NULL")
+        PropertyValueNull
+      else
+        PropertyValueString(str)
+    }
 
+
+
+    def toString(v:PropertyValue):String = {
+      v match{
+        case PropertyValueArray(list) => list.mkString("{","|","}")
+        case PropertyValueString(str) => str
+        case PropertyValueNull => "NULL"
+      }
+    }
+  }
+
+  case class SchemaProperty(propertyType: String, propertyTypeLabel: String, propertyName:String, propertyNameLabel:String,  propertyValue: PropertyValue, propertyValueLabel: Option[PropertyValue]) extends com.nxtwv.graphs.common.Thing.Property
+
+  case object PropertyValueNull extends PropertyValue
+  case class PropertyValueArray(list:Seq[String]) extends PropertyValue
+  case class PropertyValueString(str:String) extends PropertyValue
+  def cleanString(s:String) = s.replace("'","\'")
 }
 
-
-class DbPediaThing(private val uri: String, label:String, properties: Map[String, Option[JsValue]]) extends Thing(label:String, properties: Map[String, Option[JsValue]]){
-
-  override def toString = {
-    val str = (s"UIR :: $entityUri\n") + super.toString
-    str.mkString
-  }
+trait DbPediaBaseThing extends Thing{
+  def uri:String
+  def wikiPageID: String
+  def wikiPageRevisionID: String
+  def comment:String
 
   def entityUri = {
-    URLEncoder.encode(uri,"UTF-8")
-  }
-
-  // TODO: which items do we want to make sure are indexed?
-  def toJson ={
-    val map = Map(
-      "uri" -> entityUri,
-      "label" -> label.replace("'","\\'")
-    )
-    /*
-    ++ properties.filter{ case (k,v) => v != None }.map{
-      case (k,v) =>
-        v match{
-          case Some(xs:JsArray) =>
-            println(xs)
-            (k, xs.as[List[String]].mkString(","))
-          case Some(x:JsValue) =>
-            println(x)
-            (k, x.as[String])
-        }
-
-    }
-    */
-    Json.toJson(map)
+    //URLEncoder.encode(uri,"UTF-8")
+    DbPediaThing.cleanString(uri)
   }
 }
 
-class DbPediaVariant(entityUri: String, label:String, properties: Map[String, Option[JsValue]]) extends DbPediaThing(entityUri, label, properties)
+
+case class DbPediaThing(uri: String, label:String, wikiPageID:String, wikiPageRevisionID:String, comment:String, properties: Map[String,SchemaProperty]) extends DbPediaBaseThing
