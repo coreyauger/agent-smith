@@ -33,12 +33,12 @@ object DbPediaThing{
     }
   }
 
-  case class SchemaProperty(propertyType: String, propertyTypeLabel: String, propertyName:String, propertyNameLabel:String,  propertyValue: PropertyValue, propertyValueLabel: Option[PropertyValue]) extends com.nxtwv.graphs.common.Thing.Property
+  case class SchemaProperty(propertyName:String, propertyNameLabel:String,  propertyType: String, propertyTypeLabel: String, propertyValue: PropertyValue, propertyValueLabel: Option[PropertyValue]) extends com.nxtwv.graphs.common.Thing.Property
 
   case object PropertyValueNull extends PropertyValue
   case class PropertyValueArray(list:Seq[String]) extends PropertyValue
   case class PropertyValueString(str:String) extends PropertyValue
-  def cleanString(s:String) = s.replace("'","\'")
+  def cleanString(s:String) = s.replace("'","\\'")
 }
 
 trait DbPediaBaseThing extends Thing{

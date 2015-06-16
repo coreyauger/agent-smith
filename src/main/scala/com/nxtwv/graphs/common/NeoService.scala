@@ -19,6 +19,7 @@ trait NeoService {
     }
   }
 
+
   val clientConfig = new DefaultWSClientConfig()
   val secureDefaults:com.ning.http.client.AsyncHttpClientConfig = new NingAsyncHttpClientConfigBuilder(clientConfig).build()
   // You can directly use the builder for specific options once you have secure TLS defaults...
@@ -37,6 +38,7 @@ trait NeoService {
       .withHeaders( ("Accept","application/json; charset=UTF-8"), ("Content-Type", "application/json") )
       .post(Json.obj("statements" -> jsonStatments))
     req.map { res =>
+      println(res.json)
       res.json
     }
   }
@@ -95,14 +97,14 @@ trait NeoService {
     * Neo4j always use http 200 or 201 code. So no 40x for errors, we need to inspect the json "errors" field
     */
     private def neoPost()(implicit neoServer:Neo4JServer): Future[Seq[JsObject]] = {
-      println("neoPost")
+      val toPost = Json.obj("statements" -> Json.arr(
+        Json.obj("statement" -> q.stripMargin, "parameters" -> params)))
       WS.clientUrl(neoServer.url("transaction/commit"))
         .withHeaders( ("Accept","application/json; charset=UTF-8"), ("Content-Type", "application/json") )
-        .post(Json.obj("statements" -> Json.arr(
-        Json.obj("statement" -> q.stripMargin, "parameters" -> params))
-      ))
+        .post(toPost)
         .map { res =>
         println(res.json)
+        if(res.json.toString.contains("IN"))println(toPost)
         val errors = (res.json \ "errors").as[Seq[ResultError]]
         val results = (res.json \ "results")(0)
         val values = (results \\ "row").map(_.as[Seq[JsValue]])
