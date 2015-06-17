@@ -76,13 +76,13 @@ object DbpediaCypherLoader extends DataLoader with NeoService {
                       case ((tUri,tLabel), ii) =>
                         s"""
                          |MERGE (t${ii}:Type {uri:'${DbPediaThing.cleanString(tUri)}'})
-                         |CREATE UNIQUE (e)-[:REL {label:'${p.propertyNameLabel.replaceAll("[^A-Za-z0-9 ]", "").toUpperCase}',uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(t${ii})
+                         |CREATE UNIQUE (e)-[:${DbPediaThing.toRelationship(p.propertyNameLabel)} {uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(t${ii})
                        """.stripMargin
                     }.mkString("\n")
                   case PropertyValueString(str) =>
                     s"""
                          |MERGE (e${i}:Entity {uri:'${DbPediaThing.cleanString(str)}'})
-                         |CREATE UNIQUE (e)-[:REL {label:'${DbPediaThing.cleanString(p.propertyNameLabel)}',uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(e${i})
+                         |CREATE UNIQUE (e)-[:${DbPediaThing.toRelationship(p.propertyNameLabel)} {uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(e${i})
                        """.stripMargin
                   case PropertyValueNull => ""
                 }
@@ -97,13 +97,13 @@ object DbpediaCypherLoader extends DataLoader with NeoService {
                       case ((eUri, eLabel), ii) =>
                         s"""
                          |MERGE (e${i}p${ii}:Entity {uri:'${DbPediaThing.cleanString(eUri)}'})
-                         |CREATE UNIQUE (e)-[:REL {label:'${DbPediaThing.cleanString(p.propertyNameLabel)}',uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(e${i}p${ii})
+                         |CREATE UNIQUE (e)-[:${DbPediaThing.toRelationship(p.propertyNameLabel)} {uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(e${i}p${ii})
                        """.stripMargin
                     }.mkString("\n")
                   case PropertyValueString(str) =>
                     s"""
                      |MERGE (e${i}:Entity {uri:'${DbPediaThing.cleanString(str)}'})
-                     |CREATE UNIQUE (e)-[:REL {label:'${DbPediaThing.cleanString(p.propertyNameLabel)}',uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(e${i})
+                     |CREATE UNIQUE (e)-[:${DbPediaThing.toRelationship(p.propertyNameLabel)} {uri:'${DbPediaThing.cleanString(p.propertyName)}'}]->(e${i})
                    """.stripMargin
                   case PropertyValueNull => ""
                 }

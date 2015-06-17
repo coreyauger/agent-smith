@@ -39,6 +39,7 @@ object DbPediaThing{
   case class PropertyValueArray(list:Seq[String]) extends PropertyValue
   case class PropertyValueString(str:String) extends PropertyValue
   def cleanString(s:String) = s.replace("'","\\'")
+  def toRelationship(s:String) = s.replaceAll("[^A-Za-z]", "").toUpperCase
 }
 
 trait DbPediaBaseThing extends Thing{

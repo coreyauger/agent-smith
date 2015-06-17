@@ -24,9 +24,9 @@ object Main extends App{
     // Read the CSV file
     //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Magazine.csv.gz")
     //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/ComicsCharacter.csv.gz")
-    val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Film.csv.gz")
+    //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Film.csv.gz")
     //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Album.csv.gz")
-    //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Actor.csv.gz")
+    val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Actor.csv.gz")
     // split / clean data
     val headerAndRows = csv.map(line => line.split("\",\"").map(_.trim.replace("\"","")))
     // get header
@@ -62,7 +62,7 @@ object Main extends App{
     val count = things.count()
     println(s"Num records ${count}" )
 
-    val factor = count / 1000
+    val factor = count / 250
 
 
     val cypher = things.map(a => DbpediaCypherLoader.toCypher(a).mkString("\n"))
@@ -72,7 +72,7 @@ object Main extends App{
     //  case xs =>
         println(s"working batch: $k of $factor")
        // Await.ready(DbpediaCypherLoader.execute(xs), 2.minutes)
-        Await.ready(DbpediaCypherLoader.batchCypher(xs.toList), 2.minutes)
+        Await.ready(DbpediaCypherLoader.batchCypher(xs.toList), 30.minutes)
         "."
     }.foreach(print)
 
