@@ -1,11 +1,12 @@
 package com.nxtwv.graphs
 
+import com.nxtwv.graphs.neo.DbpediaCypherLoader
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
 import com.nxtwv.graphs.dbpedia.DbPediaThing
 import com.nxtwv.graphs.dbpedia.DbPediaThing._
-import com.nxtwv.graphs.dbpedia.DbpediaCypherLoader
+import org.apache.spark.rdd.RDD
 import scala.concurrent.Future
 import scala.Predef._
 import scala.concurrent.Await
@@ -19,14 +20,19 @@ object Main extends App{
 
   override def main(args: Array[String]) {
 
-    val conf = new SparkConf().setAppName("Agent Smith").setMaster("local[4]").set("spark.executor.memory","4g")
+    val conf = new SparkConf().setAppName("Agent Smith").setMaster("local[4]").set("spark.executor.memory","8g")
     val sc = new SparkContext(conf)
+
+    val path = "/media/suroot/files/data/dbpedia/csv/"
+
     // Read the CSV file
-    //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Magazine.csv.gz")
-    //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/ComicsCharacter.csv.gz")
-    //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Film.csv.gz")
-    //val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Album.csv.gz")
-    val csv = sc.textFile("/home/suroot/projects/data/dbpedia/csv/Actor.csv.gz")
+    //val csv = sc.textFile(s"${path}Magazine.csv.gz")
+    //val csv = sc.textFile(s"${path}ComicsCharacter.csv.gz")
+    //val csv = sc.textFile(s"${path}Film.csv.gz")
+    //val csv = sc.textFile(s"${path}Album.csv.gz")
+    val csv = sc.textFile(s"${path}Actor.csv.gz")
+    //val csv = sc.textFile(s"${path}Agent.csv.gz")
+    //val csv = sc.textFile(s"${path}Album.csv.gz")
     // split / clean data
     val headerAndRows = csv.map(line => line.split("\",\"").map(_.trim.replace("\"","")))
     // get header
@@ -39,7 +45,11 @@ object Main extends App{
     }.toMap
     val keys = headerRdd(0)
     //val data = headerAndRows.filter(_(0) != header(0))
+
+    //println(s"Num records ${headerAndRows.count()}" )
+
     val data = headerAndRows.zipWithIndex().filter(_._2 >= 4L).map(_._1)
+    //val data = headerAndRows.
     // splits to map (header/value pairs)
     val instances = data.map(splits =>keys.zip(splits).toMap)
 
@@ -59,19 +69,42 @@ object Main extends App{
         })
     }
     things.cache()
+
     val count = things.count()
     println(s"Num records ${count}" )
-
     val factor = count / 250
 
+    /*
+    val relations:RDD[(String, Int)] = things.flatMap{ t =>
+      t.properties.values.flatMap{ p =>
+        p.propertyValue match{
+          case PropertyValueArray(arr) =>
+            val labelArray = p.propertyValueLabel.map{
+              case PropertyValueArray(a) => a
+              case _ => arr
+            }.getOrElse(arr)
+            arr.zip(labelArray).zipWithIndex.map {
+              case ((eUri, eLabel), ii) =>
+                //(p.propertyNameLabel, eUri)
+                (p.propertyNameLabel, 1)
+            }
+          case PropertyValueString(str) =>
+            List( (p.propertyNameLabel, 1) )
+          case PropertyValueNull => List[(String, Int)]()
+
+        }
+
+      }
+    }.reduceByKey( (a,b) => a+b )
+
+    println("relations")
+    relations.map{ case (a,b) => (b,a) }.sortByKey().foreach(println)
+*/
 
     val cypher = things.map(a => DbpediaCypherLoader.toCypher(a).mkString("\n"))
     cypher.zipWithIndex().map{ case (s,i) => (i % factor,s) }.groupByKey.map{
-    //cypher.map{
       case (k, xs) =>
-    //  case xs =>
         println(s"working batch: $k of $factor")
-       // Await.ready(DbpediaCypherLoader.execute(xs), 2.minutes)
         Await.ready(DbpediaCypherLoader.batchCypher(xs.toList), 30.minutes)
         "."
     }.foreach(print)
@@ -84,7 +117,6 @@ object Main extends App{
 
     //instances.filter(_("rdf-schema#label").contains("WOD")).foreach(m => println(m.get("URI")))
     //cypher.take(2).foreach(println)
-    println(s"Num records ${count}" )
     sc.stop()
 
   }

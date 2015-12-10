@@ -3,6 +3,8 @@ package com.nxtwv.utils
 import java.io.{StringWriter, BufferedReader, InputStreamReader, FileInputStream}
 import java.util.zip.GZIPInputStream
 
+import scala.io.BufferedSource
+
 
 /**
  * Created by corey auger on 14/10/14.
@@ -24,8 +26,8 @@ object GZipFileIterator {
 }
 
 object GZipFileContents {
-  def apply(file: java.io.File, encoding: String) = {
-    scala.io.Source.fromInputStream(new GZIPInputStream(new FileInputStream(file))).mkString
+  def apply(file: java.io.File, encoding: String):BufferedSource = {
+    scala.io.Source.fromInputStream(new GZIPInputStream(new FileInputStream(file)))
   }
 }
 
