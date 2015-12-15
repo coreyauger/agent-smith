@@ -1,6 +1,7 @@
 package com.nxtwv.graphs
 
 import com.nxtwv.graphs.neo.DbpediaCypherLoader
+import com.nxtwv.graphs.titan.DbpediaTitanLoader
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.SparkConf
@@ -101,13 +102,30 @@ object Main extends App{
     relations.map{ case (a,b) => (b,a) }.sortByKey().foreach(println)
 */
 
-    val cypher = things.map(a => DbpediaCypherLoader.toCypher(a).mkString("\n"))
+    /*val cypher = things.map(a => DbpediaCypherLoader.toCypher(a).mkString("\n"))
     cypher.zipWithIndex().map{ case (s,i) => (i % factor,s) }.groupByKey.map{
       case (k, xs) =>
         println(s"working batch: $k of $factor")
         Await.ready(DbpediaCypherLoader.batchCypher(xs.toList), 30.minutes)
         "."
-    }.foreach(print)
+    }.foreach(print)*/
+
+    val gremlin = things.map(a => DbpediaTitanLoader.toGremlin(a).mkString("\n") )
+    gremlin.zipWithIndex.foreach{ case (gg, ind) =>
+      println(ind)
+      gg.split("\n\n").foreach { g =>
+        val rs = DbpediaTitanLoader.execGremlin(g)
+        print(".")
+
+      }
+    }
+
+   /* val gremlin = things.map(a => DbpediaTitanLoader.toGremlin(a).mkString("\n"))
+    gremlin.foreach{ g =>
+      val rs = DbpediaTitanLoader.execGremlin(g)
+      println(rs.toString)
+    }*/
+    //gremlin.take(1).foreach(println)
 
     // Now that we know the property types.. we should do some of the following maps in neo...
     // string -> simple string property

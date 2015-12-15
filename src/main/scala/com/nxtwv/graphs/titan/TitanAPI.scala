@@ -47,7 +47,7 @@ trait TitanAPI {
       |entity = mgmt.makeVertexLabel('entity').make();
       |uri = mgmt.makePropertyKey('uri').dataType(String.class).cardinality(Cardinality.SINGLE).make();
       |wikiPageID = mgmt.makePropertyKey('wikiPageID').dataType(Long.class).cardinality(Cardinality.SINGLE).make();
-      |label = mgmt.makePropertyKey('label').dataType(String.class).cardinality(Cardinality.SINGLE).make();
+      |label = mgmt.makePropertyKey('wikiLabel').dataType(String.class).cardinality(Cardinality.SINGLE).make();
       |comment = mgmt.makePropertyKey('comment').dataType(String.class).cardinality(Cardinality.SINGLE).make();
       |mgmt.buildIndex('byUriComposite', Vertex.class).addKey(uri).unique().buildCompositeIndex();
       |mgmt.buildIndex('byWikiPageIDComposite', Vertex.class).addKey(wikiPageID).unique().buildCompositeIndex();
@@ -69,6 +69,19 @@ trait TitanAPI {
   gremlinClient.submitAsync(createGremlinRelationshipSchema)
   gremlinClient.closeAsync()  // keep this around as our read client..
 
+
+  def execGremlin(g:String):Unit = {
+    val gremlin = titanCluster.connect()
+    try {
+      gremlin.init()
+      gremlin.submit(g)
+    }catch{
+      case t:Throwable =>
+        println(t.toString)
+    }finally{
+      gremlin.close()
+    }
+  }
 
   def valueMapStringToMap(vm:String):Map[String,String] = {
     val kv = vm.substring(1,vm.length-1).split(",")
